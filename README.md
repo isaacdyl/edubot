@@ -92,6 +92,28 @@ To compile the ROS workspace, source your ROS installation and call the `colcon`
         # Call build command
         colcon build
 
+### Python package setup (`python_controllers`)
+
+If you only want to setup the Python controller package, build it directly:
+
+        cd edubot/ros_ws
+
+        # Source one ROS installation
+        source /opt/ros/humble/setup.bash
+        # or
+        source /opt/ros/jazzy/setup.bash
+
+        # Build only the python package
+        colcon build --packages-select python_controllers
+
+        # Source local workspace after build
+        source install/setup.bash
+
+        # Verify entry points
+        ros2 run python_controllers example_pos_traj
+        # or
+        ros2 run python_controllers example_vel_traj
+
 ### Running
 
 Once the package is compiled, source by calling:
@@ -109,7 +131,8 @@ You can run start the simulation or the driver for the robot with the following 
 `ros2 launch lerobot hw_position.launch.py`  |  Launches the hardware interface with the robot in position control mode
 `ros2 launch lerobot hw_velocity.launch.py`  |  Launches the hardware interface with the robot in velocity control mode
 `ros2 run controllers example_traj` |  Starts the cpp controller that commands a periodic example trajectory
-`ros2 run python_controllers example_traj`  | Starts the python controller that commands a periodic example trajectory
+`ros2 run python_controllers example_pos_traj`  | Starts the python controller for periodic example position trajectory
+`ros2 run python_controllers example_vel_traj`  | Starts the python controller for periodic example velocity trajectory
 
 ### For Virtual Machine Users
 

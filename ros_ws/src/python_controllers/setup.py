@@ -11,12 +11,12 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'numpy'],
     zip_safe=True,
     maintainer='anton',
     maintainer_email='a.bredenbeck@tudelft.nl',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Example Python ROS 2 trajectory controllers for EduBot/LeRobot.',
+    license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
