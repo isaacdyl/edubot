@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: python_controllers
+Version: 0.0.0
+Summary: Example Python ROS 2 trajectory controllers for EduBot/LeRobot.
+Maintainer: anton
+Maintainer-email: a.bredenbeck@tudelft.nl
+License: MIT
+Requires-Dist: setuptools
+Requires-Dist: numpy
+Dynamic: license
+Dynamic: maintainer
+Dynamic: maintainer-email
+Dynamic: requires-dist
+Dynamic: summary
