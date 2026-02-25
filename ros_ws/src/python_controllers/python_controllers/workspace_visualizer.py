@@ -22,6 +22,7 @@ class WorkspaceVisualizer(Node):
         Rz = np.array([[np.cos(yaw), -np.sin(yaw), 0], [np.sin(yaw), np.cos(yaw), 0], [0, 0, 1]])
         
         T[0:3, 0:3] = Rz @ Ry @ Rx
+      
         return T
 
     def publish_workspace(self):
@@ -42,29 +43,31 @@ class WorkspaceVisualizer(Node):
         
         # Nest loops for joint angles (Task 1.2.2: use -3.14 to 3.14; Task 1.2.3: use measured limits)
         # Reducing step size for performance; decrease 'step' for higher density
-        step = 0.5 
-        for q1 in np.arange(-3.14, 3.14, step): # Shoulder yaw
+        step = 0.4
+        for q1 in np.arange(-2, 2, step): # Shoulder yaw
             for q2 in np.arange(-1.57, 1.57, step): # Shoulder pitch
-                for q3 in np.arange(-1.57, 1.57, step): # Elbow
+                for q3 in np.arange(-1.58, 1.58, step): # Elbow
+                    for q4 in np.arange(-1.57, 1.57, step): # Wrist pitch
                     
-                    # Chain the transforms using assignment values 
-                    T_base_sh = self.get_transform(0.0, -0.0452, 0.0165, 0.0, 0.0, q1)
-                    T_sh_ua = self.get_transform(0.0, -0.0306, 0.1025, 0.0, -1.57079 + q2, 0.0)
-                    T_ua_la = self.get_transform(0.11257, -0.028, 0, 0.0, 0.0, q3)
-                    T_la_wr = self.get_transform(0.0052, -0.1349, 0, 0.0, 0.0, 1.57079)
-                    T_wr_gr = self.get_transform(-0.0601, 0, 0, 0.0, -1.57079, 0.0)
-                    T_gr_gc = self.get_transform(0.0, 0.0, 0.075, 0.0, 0.0, 0.0)
+                        # Chain the transforms using assignment values 
+                        T_base_sh = self.get_transform(0.0, -0.0452, 0.0165, 0.0, 0.0, q1)
+                        T_sh_ua = self.get_transform(0.0, -0.0306, 0.1025, 0.0, -1.57079,q2)
+                        T_ua_la = self.get_transform(0.11257, -0.028, 0, 0.0, 0.0, q3)
+                        T_la_wr = self.get_transform(0.0052, -0.1349, 0, 0.0, 0.0, 1.57079+q4)
+                        T_wr_gr = self.get_transform(-0.0601, 0, 0, 0.0, -1.57079, 0.0)
+                        T_gr_gc = self.get_transform(0.0, 0.0, 0.075, 0.0, 0.0, 0.0)
+                        
 
-                    # Total Forward Kinematics
-                    T_final = T_w_base @ T_base_sh @ T_sh_ua @ T_ua_la @ T_la_wr @ T_wr_gr @ T_gr_gc
-                    
-                    p = Point()
-                    p.x, p.y, p.z = T_final[0,3], T_final[1,3], T_final[2,3]
-                    marker.points.append(p)
+                        # Total Forward Kinematics
+                        T_final = T_w_base @ T_base_sh @ T_sh_ua @ T_ua_la @ T_la_wr @ T_wr_gr @ T_gr_gc
+                        
+                        p = Point()
+                        p.x, p.y, p.z = T_final[0,3], T_final[1,3], T_final[2,3]
+                        marker.points.append(p)
 
         self.publisher.publish(marker)
         self.get_logger().info('Published workspace points')
-    
+
 def main():
     rclpy.init()
     node = WorkspaceVisualizer()
