@@ -121,6 +121,18 @@ Once the package is compiled, source by calling:
       # Source the local setup
       source install/setup.bash
 
+### Convenience: avoid rebuilding every time you open the repo
+
+Use the workspace helper below from the repository root:
+
+        source ros_ws/dev_setup.bash
+
+This helper only runs `colcon build` when needed (first build or changes in `ros_ws/src`) and otherwise reuses your existing `build/` and `install/`.
+
+If you want this to happen automatically when entering the repo, add this to your `~/.bashrc`:
+
+        cd() { builtin cd "$@" && [[ "$PWD" == *"/edubot"* ]] && source "$PWD/ros_ws/dev_setup.bash"; }
+
 You can run start the simulation or the driver for the robot with the following commands
 
  Command                            |  Effect 
