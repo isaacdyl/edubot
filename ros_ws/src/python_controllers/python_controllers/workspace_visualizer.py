@@ -91,6 +91,50 @@ def forward_kinematics_batch(q1, q2, q3, q4):
 
 # ─── ROS 2 Visualization Logic ───────────────────────────────────────────────
 
+
+def print_forward_kinematics():
+    """Prints the forward kinematics as a linear combination of transformation matrices."""
+    q1 = np.array([1.0])
+    q2 = np.array([1.0])
+    q3 = np.array([1.0])
+    q4 = np.array([1.0])
+    
+    # Fixed offsets
+    t_base_sh = np.array([0.0, L_SH_Y, L_SH_Z])
+    t_sh_ua = np.array([0.0, L_UA_Y, L_UA_Z])
+    t_ua_la = np.array([L_LA_X, L_LA_Y, 0.0])
+    t_la_wr = np.array([L_WR_X, L_WR_Y, 0.0])
+    t_wr_ee = np.array([L_GR_X, 0.0, L_GC_Z])
+    
+    R1 = rot_z_batch(q1)
+    R2_local = rot_z_batch(q2)
+    R3_local = rot_z_batch(q3)
+    R4_local = rot_z_batch(1.57079 + q4)
+    
+    Ry_offset = np.array([[0, 0, -1], [0, 1, 0], [1, 0, 0]])
+    R12 = np.einsum('nij,jk,nkl->nil', R1, Ry_offset, R2_local)
+    R123 = np.einsum('nij,njk->nik', R12, R3_local)
+    R1234 = np.einsum('nij,njk->nik', R123, R4_local)
+    
+    print("FORWARD KINEMATICS AS LINEAR COMBINATION OF TRANSFORMATIONS:\n")
+    print("p_ee = T_base_sh + R1*t_sh_ua + R12*t_ua_la + R123*t_la_wr + R1234*t_wr_ee\n")
+    
+    print(f"T_base_sh: {t_base_sh}")
+    print(f"\nR1 (q1={q1[0]}):\n{R1[0]}")
+    print(f"→ R1*t_sh_ua = {np.einsum('ij,j->i', R1[0], t_sh_ua)}")
+    
+    print(f"\nR12 (q1={q1[0]}, q2={q2[0]}):\n{R12[0]}")
+    print(f"→ R12*t_ua_la = {np.einsum('ij,j->i', R12[0], t_ua_la)}")
+    
+    print(f"\nR123 (q1={q1[0]}, q2={q2[0]}, q3={q3[0]}):\n{R123[0]}")
+    print(f"→ R123*t_la_wr = {np.einsum('ij,j->i', R123[0], t_la_wr)}")
+    
+    print(f"\nR1234 (q1={q1[0]}, q2={q2[0]}, q3={q3[0]}, q4={q4[0]}):\n{R1234[0]}")
+    print(f"→ R1234*t_wr_ee = {np.einsum('ij,j->i', R1234[0], t_wr_ee)}")
+    
+    p_world = forward_kinematics_batch(q1, q2, q3, q4)
+    print(f"\nFINAL END EFFECTOR POSITION (World Frame):\n{p_world[0]}")
+
 def get_point_cloud(limits, step):
     """Generates the meshgrid and computes all FK positions."""
     q1 = np.arange(*limits['q1'], step)
@@ -145,4 +189,5 @@ def main():
     rclpy.shutdown()
 
 if __name__ == '__main__':
+    print_forward_kinematics()
     main()
