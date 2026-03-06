@@ -20,13 +20,18 @@ LIMITS_UNCONSTRAINED = {
 }
 
 LIMITS_CONSTRAINED = {
-    'q1': (-2.0,    2.0   ),   
-    'q2': (-1.57,   1.57  ),   
-    'q3': (-1.58,   1.58  ),   
-    'q4': (-1.57,   1.57  ),   
+    'q1': (-2.0,    2.0   ),
+    'q2': (-1.57,   1.57  ),
+    'q3': (-1.58,   1.58  ),
+    'q4': (-1.57,   1.57  ),
 }
 
-STEP = 0.15  # Radians between points
+STEP = 0.05  # radians between samples in joint space
+
+# ─── Boundary extraction (spherical bins) ─────────────────────────────────────
+N_AZ = 240   # azimuth bins  (0..2pi)
+N_EL = 120   # elevation bins(-pi/2..pi/2)
+ORIGIN = np.array([0.0, 0.0, 0.0])  # bin directions around this point (world frame)
 
 # ─── Kinematics Engine ───────────────────────────────────────────────────────
 
@@ -35,8 +40,8 @@ def rot_z_batch(angles):
     c, s = np.cos(angles), np.sin(angles)
     N = len(angles)
     R = np.zeros((N, 3, 3))
-    R[:, 0, 0], R[:, 0, 1] =  c, -s
-    R[:, 1, 0], R[:, 1, 1] =  s,  c
+    R[:, 0, 0], R[:, 0, 1] = c, -s
+    R[:, 1, 0], R[:, 1, 1] = s,  c
     R[:, 2, 2] = 1.0
     return R
 
@@ -45,8 +50,6 @@ def forward_kinematics_batch(q1, q2, q3, q4):
     Computes the XYZ position of the End Effector for N sets of joint angles.
     This follows the physical chain of the robot step-by-step.
     """
-    N = len(q1)
-    
     # 1. Rotations at each joint
     R1 = rot_z_batch(q1)                                      # Shoulder Yaw
     R2_local = rot_z_batch(q2)                                # Shoulder Pitch
@@ -61,14 +64,13 @@ def forward_kinematics_batch(q1, q2, q3, q4):
     t_wr_ee   = np.array([L_GR_X, 0.0, L_GC_Z])               # Wrist to End Effector (Simplified)
 
     # 3. Cumulative Rotations & Positions (Chain Multiplication)
-    # Position = Prev_Pos + (Cumulative_Rotation * Local_Translation)
-    
     # Joint 1: Shoulder
     p1 = np.einsum('nij,j->ni', R1, t_base_sh)
 
-    # Joint 2: Upper Arm
-    # Note: Joint 2 has a fixed -90 deg Y rotation offset
-    Ry_offset = np.array([[0, 0, -1], [0, 1, 0], [1, 0, 0]]) 
+    # Joint 2: Upper Arm (fixed -90 deg Y offset)
+    Ry_offset = np.array([[0, 0, -1],
+                          [0, 1,  0],
+                          [1, 0,  0]])
     R12 = np.einsum('nij,jk,nkl->nil', R1, Ry_offset, R2_local)
     p2 = p1 + np.einsum('nij,j->ni', R1, t_sh_ua)
 
@@ -84,12 +86,14 @@ def forward_kinematics_batch(q1, q2, q3, q4):
     p_ee = p4 + np.einsum('nij,j->ni', R1234, t_wr_ee)
 
     # 4. Final World Transform (Robot is rotated 180 deg on the table)
-    R_world_base = np.array([[-1, 0, 0], [0, -1, 0], [0, 0, 1]])
+    R_world_base = np.array([[-1, 0, 0],
+                             [ 0,-1, 0],
+                             [ 0, 0, 1]])
     p_world = np.einsum('ij,nj->ni', R_world_base, p_ee)
 
     return p_world
 
-# ─── ROS 2 Visualization Logic ───────────────────────────────────────────────
+# ─── Workspace sampling ──────────────────────────────────────────────────────
 
 
 def print_forward_kinematics():
@@ -141,9 +145,53 @@ def get_point_cloud(limits, step):
     q2 = np.arange(*limits['q2'], step)
     q3 = np.arange(*limits['q3'], step)
     q4 = np.arange(*limits['q4'], step)
-    
+
     Q1, Q2, Q3, Q4 = np.meshgrid(q1, q2, q3, q4, indexing='ij')
     return forward_kinematics_batch(Q1.ravel(), Q2.ravel(), Q3.ravel(), Q4.ravel())
+
+def boundary_by_spherical_binning(points_xyz: np.ndarray,
+                                  n_az: int,
+                                  n_el: int,
+                                  origin: np.ndarray) -> np.ndarray:
+    """
+    Divide the sphere (directions from origin) into bins and keep only the farthest
+    point in each (azimuth,elevation) bin.
+    """
+    if points_xyz.size == 0:
+        return points_xyz
+
+    p = points_xyz - origin[None, :]
+    x, y, z = p[:, 0], p[:, 1], p[:, 2]
+    r = np.sqrt(x*x + y*y + z*z)
+
+    eps = 1e-12
+    r_safe = np.maximum(r, eps)
+
+    phi = np.arctan2(y, x)  # azimuth: [-pi, pi]
+    theta = np.arcsin(np.clip(z / r_safe, -1.0, 1.0))  # elevation: [-pi/2, pi/2]
+
+    az = ((phi + np.pi) / (2*np.pi) * n_az).astype(np.int32)
+    el = ((theta + np.pi/2) / (np.pi) * n_el).astype(np.int32)
+
+    az = np.clip(az, 0, n_az - 1)
+    el = np.clip(el, 0, n_el - 1)
+
+    bin_id = el * n_az + az
+    nbins = n_az * n_el
+
+    best_r = -np.ones(nbins, dtype=np.float64)
+    best_i = -np.ones(nbins, dtype=np.int32)
+
+    for i in range(points_xyz.shape[0]):
+        b = int(bin_id[i])
+        if r[i] > best_r[b]:
+            best_r[b] = r[i]
+            best_i[b] = i
+
+    sel = best_i[best_i >= 0]
+    return points_xyz[sel]
+
+# ─── ROS 2 Visualization Logic ───────────────────────────────────────────────
 
 def create_marker(xyz, marker_id, color, stamp, ns, size):
     """Creates a ROS Marker message for a point cloud."""
@@ -162,20 +210,28 @@ class WorkspaceVisualizer(Node):
     def __init__(self):
         super().__init__('workspace_visualizer')
         self.pub = self.create_publisher(MarkerArray, 'workspace_points', 10)
-        
-        self.get_logger().info("Computing clouds...")
-        self.pts_full = get_point_cloud(LIMITS_UNCONSTRAINED, STEP)
-        self.pts_lim  = get_point_cloud(LIMITS_CONSTRAINED, STEP)
-        
+
+        self.get_logger().info("Computing clouds (full)...")
+        pts_full = get_point_cloud(LIMITS_UNCONSTRAINED, STEP)
+        self.get_logger().info(f"Full cloud computed: {len(pts_full)} points. Extracting boundary...")
+        self.pts_full = boundary_by_spherical_binning(pts_full, N_AZ, N_EL, ORIGIN)
+        self.get_logger().info(f"Full boundary: {len(self.pts_full)} points.")
+
+        self.get_logger().info("Computing clouds (constrained)...")
+        pts_lim = get_point_cloud(LIMITS_CONSTRAINED, STEP)
+        self.get_logger().info(f"Constrained cloud computed: {len(pts_lim)} points. Extracting boundary...")
+        self.pts_lim = boundary_by_spherical_binning(pts_lim, N_AZ, N_EL, ORIGIN)
+        self.get_logger().info(f"Constrained boundary: {len(self.pts_lim)} points.")
+
         self.timer = self.create_timer(1.0, self.publish)
-        self.get_logger().info(f"Done. Points: Full={len(self.pts_full)}, Constrained={len(self.pts_lim)}")
+        self.get_logger().info("Done.")
 
     def publish(self):
         now = self.get_clock().now().to_msg()
         ma = MarkerArray()
-        # Red = Full range, Green = Actual limits
-        ma.markers.append(create_marker(self.pts_full, 0, (1.0, 0.2, 0.2, 0.3), now, "full", 0.004))
-        ma.markers.append(create_marker(self.pts_lim, 1, (0.2, 1.0, 0.4, 0.8), now, "lim", 0.006))
+        # Red = Full boundary, Green = Constrained boundary
+        ma.markers.append(create_marker(self.pts_full, 0, (1.0, 0.2, 0.2, 0.35), now, "full_boundary", 0.006))
+        ma.markers.append(create_marker(self.pts_lim,  1, (0.2, 1.0, 0.4, 0.90), now, "lim_boundary",  0.007))
         self.pub.publish(ma)
 
 def main():
