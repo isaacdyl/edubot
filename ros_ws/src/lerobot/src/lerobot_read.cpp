@@ -27,7 +27,7 @@ LeRobotRead::LeRobotRead()
     std::vector<long int> zero_positions = this->get_parameter("zero_positions").as_integer_array();
     
     this->IDs.resize(ids_long.size());
-    std::vector<DriverMode> operating_modes(ids_long.size(), DriverMode::UNPOWERED);
+    std::vector<DriverMode> operating_modes(ids_long.size(), DriverMode::POSITION);
     for(uint8_t i = 0; i < ids_long.size(); i++)
     {
         this->IDs.at(i) = static_cast<uint8_t>(ids_long.at(i));
@@ -47,7 +47,7 @@ LeRobotRead::LeRobotRead()
         this->get_parameter("serial_port").as_string(), 
         this->get_parameter("baud_rate").as_int(), 
         this->get_parameter("frequency").as_double(), 
-        IDs, false, false, false);
+        IDs, false, false);
 
     for (size_t i = 0; i < IDs.size() && i < zero_positions.size(); i++)
     {
