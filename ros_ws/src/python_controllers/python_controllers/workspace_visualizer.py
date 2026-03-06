@@ -94,10 +94,10 @@ def forward_kinematics_batch(q1, q2, q3, q4):
 
 def print_forward_kinematics():
     """Prints the forward kinematics as a linear combination of transformation matrices."""
-    q1 = np.array([1.0])
-    q2 = np.array([1.0])
-    q3 = np.array([1.0])
-    q4 = np.array([1.0])
+    q1 = np.array([0.0])
+    q2 = np.array([0.0])
+    q3 = np.array([0.0])
+    q4 = np.array([0.0])
     
     # Fixed offsets
     t_base_sh = np.array([0.0, L_SH_Y, L_SH_Z])
