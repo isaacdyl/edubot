@@ -22,6 +22,8 @@ setup(
         'console_scripts': [
             'example_pos_traj = python_controllers.example_pos_traj:main',
             'example_vel_traj = python_controllers.example_vel_traj:main',
+            'workspace_visualizer = python_controllers.workspace_visualizer:main',
+            'joint_tester = python_controllers.Joint_tester:main',
         ],
     },
 )
