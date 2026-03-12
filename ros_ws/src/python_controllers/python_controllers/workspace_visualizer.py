@@ -17,6 +17,7 @@ LIMITS_UNCONSTRAINED = {
     'q2': (-3.14, 3.14),
     'q3': (-3.14, 3.14),
     'q4': (-3.14, 3.14),
+    'q5': (-3.14, 3.14),
 }
 
 LIMITS_CONSTRAINED = {
@@ -24,6 +25,7 @@ LIMITS_CONSTRAINED = {
     'q2': (-1.57,   1.57  ),
     'q3': (-1.58,   1.58  ),
     'q4': (-1.57,   1.57  ),
+    'q5': (-1.58,   1.58  ),  # Wrist roll doesn't affect workspace boundary
 }
 
 STEP = 0.05  # radians between samples in joint space

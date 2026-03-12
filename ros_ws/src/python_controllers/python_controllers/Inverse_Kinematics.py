@@ -3,7 +3,7 @@ import numpy as np
 from scipy.optimize import least_squares
 
 LIMITS_CONSTRAINED = {
-    'q1': (-2.0,    2.0   ),
+    'q1': (-2.0,    2.0   ), 
     'q2': (-1.57,   1.57  ),
     'q3': (-1.58,   1.58  ),
     'q4': (-1.57,   1.57  ),
@@ -14,6 +14,9 @@ L_UA_Y, L_UA_Z   = -0.0306,  0.1025
 L_LA_X, L_LA_Y   =  0.11257, -0.028
 L_WR_X, L_WR_Y   =  0.0052, -0.1349
 L_GR_X, L_GC_Z   = -0.0601,  0.075
+
+
+
 
 upper_arm_coordinates=[0, L_SH_Y+L_UA_Y, L_SH_Z+L_UA_Z]
 
