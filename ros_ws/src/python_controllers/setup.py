@@ -25,6 +25,7 @@ setup(
             'workspace_visualizer = python_controllers.workspace_visualizer:main',
             'joint_tester = python_controllers.Joint_tester:main',
             'shape_follower = python_controllers.shape_follower:main',
+            'constant_velocity_follower = python_controllers.constant_velocity_follower:main',
             'trajectory_precheck = python_controllers.trajectory_precheck:main',
         ],
     },
