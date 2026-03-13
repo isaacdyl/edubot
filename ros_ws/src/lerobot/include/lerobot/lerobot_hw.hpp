@@ -4,7 +4,12 @@
 class LeRobotHW : public Robot
 {
 public:
-    LeRobotHW();
+    LeRobotHW(std::string ser="/dev/ttyUSB1",
+             int baud=1000000,
+             double frequency=25.0,
+             std::vector<uint8_t> ids={11, 12, 13, 14, 15, 16},
+             bool homing=false,
+             bool logging=false);
 
 protected:
     void set_des_q_single_rad(uint servo, double q) override;
@@ -35,10 +40,8 @@ protected:
 private:
     const std::vector<double> HOME;
     double gripper_open, gripper_closed, max_speed;
-    std::vector<uint8_t> IDs;
-    /** Per-joint sign correction so HW matches URDF/sim convention (1 or -1 per joint). */
-    std::vector<double> joint_signs;
-
+    std::vector<uint8_t> IDs;  
+    
     // Driver
     std::shared_ptr<FeetechServo> _driver;
 };

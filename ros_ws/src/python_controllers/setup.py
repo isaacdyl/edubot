@@ -22,6 +22,10 @@ setup(
         'console_scripts': [
             'example_pos_traj = python_controllers.example_pos_traj:main',
             'example_vel_traj = python_controllers.example_vel_traj:main',
+            'workspace_visualizer = python_controllers.workspace_visualizer:main',
+            'joint_tester = python_controllers.Joint_tester:main',
+            'shape_follower = python_controllers.shape_follower:main',
+            'trajectory_precheck = python_controllers.trajectory_precheck:main',
         ],
     },
 )
