@@ -27,6 +27,8 @@ setup(
             'shape_follower = python_controllers.shape_follower:main',
             'constant_velocity_follower = python_controllers.constant_velocity_follower:main',
             'trajectory_precheck = python_controllers.trajectory_precheck:main',
+            'offline_trajectory_solver = python_controllers.offline_trajectory_solver:main',
+            'joint_trajectory_replayer = python_controllers.joint_trajectory_replayer:main',
         ],
     },
 )
