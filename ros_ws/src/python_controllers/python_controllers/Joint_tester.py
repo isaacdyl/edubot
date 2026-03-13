@@ -20,6 +20,9 @@ JOINT_NAMES = [
 
 # ─── Test poses ───────────────────────────────────────────────────────────────
 # Format: [Shoulder_Rotation, Shoulder_Pitch, Elbow, Wrist_Pitch]
+# NOTE: Robot is clamped to table — all poses keep arm above table surface.
+#       Shoulder_Pitch positive = arm tilts UP away from table.
+#       Keeping Shoulder_Pitch >= 0.4 and Elbow <= 1.2 avoids table collision.
 TEST_POSES = {
     # Safe upright home — arm points straight up
     'home':             [ 0.0,   0.0,   0.0,    0.0  ],
@@ -48,6 +51,7 @@ TEST_POSES = {
     'rotate_left':      [ 1.8,   0.785,   0.0,    0.0  ],
     'rotate_right':     [-1.8,   0.785,   0.0,    0.0  ],
 }
+
 
 def get_q(pose_name):
     """Return joint angles for a named pose."""
@@ -148,7 +152,7 @@ class JointTester(Node):
         self.traj_pub.publish(self._make_trajectory(q))
         self.get_logger().info(f'Sent {label}: {[round(v,3) for v in q]}')
 
-    def run_sweep(self, joint_index, n=7, pause=2.5):
+    def run_sweep(self, joint_index, n=7, pause=5.0):
         """
         Sweep one joint through its full range.
         All other joints stay at zero.
@@ -165,22 +169,24 @@ class JointTester(Node):
         # Return home after sweep
         self.send_pose('home')
 
-    def run_sequence(self, pose_names, pause=3.0):
+    def run_sequence(self, pose_names, pause=None):
         """
         Execute a sequence of named poses with a pause between each.
         Example: run_sequence(['home', 'elbow_up', 'reach_forward', 'home'])
         """
-        self.get_logger().info(f'Running sequence: {pose_names}')
+        wait = pause if pause is not None else self.move_time + 2.0
+        self.get_logger().info(f'Running sequence: {pose_names} (pause={wait}s)')
         for name in pose_names:
             self.send_pose(name)
-            time.sleep(pause)
+            self.get_logger().info(f'Waiting {wait}s...')
+            time.sleep(wait)
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
     rclpy.init()
-    node = JointTester(move_time=2.0)
+    node = JointTester(move_time=4.0)
 
     # ── Choose what to run ──────────────────────────────────────────────────
     # Option A: send a single named pose
@@ -191,7 +197,7 @@ def main():
 
     # Option C: run a full sequence
     node.run_sequence(
-        ['home', 'reach_forward', 'reach_left', 'reach_right', 'elbow_up', 'home'],
+        ['home', 'reach_forward', 'reach_left', 'reach_right', 'reach_high', 'elbow_bent', 'wrist_test', 'home'],
         pause=3.0
     )
 
