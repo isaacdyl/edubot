@@ -36,13 +36,12 @@ class ConstantVelocityFollower(Node):
         self.declare_parameter("joint_state_topic", "/joint_states")
         self.declare_parameter("use_joint_state_feedback", True)
         self.declare_parameter("rate_hz", 20.0)
-        self.declare_parameter("move_time", 0.10)
         self.declare_parameter("duration_s", 4.0)
         self.declare_parameter("ee_velocity_xyz", [0.01, 0.0, 0.0])
         self.declare_parameter("q_start", [0.0, 0.4, -0.5, 0.1])
         self.declare_parameter("damping_lambda", 0.03)
         self.declare_parameter("min_sigma", 0.02)
-        self.declare_parameter("max_joint_step", 0.03)
+        self.declare_parameter("max_joint_velocity", 0.25)
 
         topic = self.get_parameter("topic").value
         joint_state_topic = self.get_parameter("joint_state_topic").value
@@ -51,22 +50,21 @@ class ConstantVelocityFollower(Node):
         )
         self.rate_hz = float(self.get_parameter("rate_hz").value)
         self.dt = 1.0 / self.rate_hz
-        self.move_time = float(self.get_parameter("move_time").value)
         self.duration_s = float(self.get_parameter("duration_s").value)
         self.ee_velocity = np.asarray(
             self.get_parameter("ee_velocity_xyz").value, dtype=float
         )
-        self.q_cmd = np.asarray(self.get_parameter("q_start").value, dtype=float)
+        self.q_seed = np.asarray(self.get_parameter("q_start").value, dtype=float)
         self.damping_lambda = float(self.get_parameter("damping_lambda").value)
         self.min_sigma = float(self.get_parameter("min_sigma").value)
-        self.max_joint_step = float(self.get_parameter("max_joint_step").value)
+        self.max_joint_velocity = float(self.get_parameter("max_joint_velocity").value)
 
         if self.ee_velocity.shape != (3,):
             raise ValueError("ee_velocity_xyz must contain exactly 3 values")
-        if self.q_cmd.shape != (4,):
+        if self.q_seed.shape != (4,):
             raise ValueError("q_start must contain exactly 4 values")
 
-        self.current_q = None
+        self.current_q = self.q_seed.copy()
         self.state_sub = self.create_subscription(
             JointState, joint_state_topic, self._on_joint_state, 10
         )
@@ -100,30 +98,32 @@ class ConstantVelocityFollower(Node):
             q[i] = msg.position[name_to_idx[name]]
         self.current_q = q
 
-    def _build_msg(self, q):
+    def _build_msg(self, qdot):
         msg = JointTrajectory()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.joint_names = ALL_JOINT_NAMES
 
         pt = JointTrajectoryPoint()
-        pt.positions = [float(q[0]), float(q[1]), float(q[2]), float(q[3]), 0.0]
-        pt.velocities = [0.0] * len(ALL_JOINT_NAMES)
-        pt.time_from_start = Duration(
-            sec=int(self.move_time), nanosec=int((self.move_time % 1.0) * 1e9)
-        )
+        pt.velocities = [
+            float(qdot[0]),
+            float(qdot[1]),
+            float(qdot[2]),
+            float(qdot[3]),
+            0.0,
+        ]
+        pt.time_from_start = Duration(sec=0, nanosec=int(self.dt * 1e9))
         msg.points = [pt]
         return msg
 
     def _effective_q(self):
-        if self.use_joint_state_feedback and self.current_q is not None:
-            return self.current_q.copy()
-        return self.q_cmd.copy()
+        return self.current_q.copy()
 
     def _stop(self, reason):
         if self.done:
             return
         self.done = True
         self.timer.cancel()
+        self.traj_pub.publish(self._build_msg(np.zeros(4, dtype=float)))
         self.get_logger().warn(reason)
 
     def _tick(self):
@@ -152,19 +152,20 @@ class ConstantVelocityFollower(Node):
         jj_t = jac @ jac.T
         damped = jj_t + (self.damping_lambda ** 2) * np.eye(3)
         qdot = jac.T @ np.linalg.solve(damped, self.ee_velocity)
-        dq = qdot * self.dt
 
-        max_abs_step = float(np.max(np.abs(dq)))
-        if max_abs_step > self.max_joint_step:
-            dq *= self.max_joint_step / max_abs_step
+        max_abs_vel = float(np.max(np.abs(qdot)))
+        if max_abs_vel > self.max_joint_velocity:
+            qdot *= self.max_joint_velocity / max_abs_vel
 
-        q_next = q + dq
+        q_next = q + qdot * self.dt
         if np.any(q_next < JOINT_LIMITS[:, 0]) or np.any(q_next > JOINT_LIMITS[:, 1]):
             self._stop("aborting on joint limit guard")
             return
 
-        self.q_cmd = q_next
-        self.traj_pub.publish(self._build_msg(q_next))
+        if not self.use_joint_state_feedback:
+            self.current_q = q_next
+
+        self.traj_pub.publish(self._build_msg(qdot))
 
 
 def main(args=None):
