@@ -146,6 +146,66 @@ You can run start the simulation or the driver for the robot with the following 
 `ros2 run python_controllers example_pos_traj`  | Starts the python controller for periodic example position trajectory
 `ros2 run python_controllers example_vel_traj`  | Starts the python controller for periodic example velocity trajectory
 
+### macOS (Apple Silicon) with Docker and browser-based RViz (noVNC)
+
+If you only need ROS 2 + RViz (no direct USB robot access), use the Docker setup in this repository. RViz is shown in your browser through noVNC, so XQuartz is not required.
+
+1. Install Docker Desktop for Mac and start it.
+2. From the repository root, initialize submodules (required for `feetech_cpp_lib`):
+
+        git submodule update --init --recursive
+
+3. Build and start the ROS container (includes noVNC server):
+
+        docker compose up --build -d
+
+4. Open RViz desktop in browser:
+
+        http://localhost:6080/vnc.html
+
+5. Open a shell in the running container:
+
+        docker compose exec ros2 bash
+
+6. Inside the container, source ROS and build workspace:
+
+        source /opt/ros/jazzy/setup.bash
+        colcon build
+        source /workspaces/edubot/ros_ws/install/setup.bash
+
+7. Launch RViz-only mode:
+
+        ros2 launch lerobot rviz.launch.py
+
+8. Or launch simulation + RViz:
+
+        ros2 launch lerobot sim_position.launch.py
+
+Useful commands for daily use:
+
+        # Start existing container
+        docker compose start
+
+        # Stop container
+        docker compose stop
+
+        # Open shell in running container
+        docker compose exec ros2 bash
+
+        # Rebuild after dependency changes
+        docker compose up --build -d
+
+        # Open browser-based RViz desktop
+        # http://localhost:6080/vnc.html
+
+        # Re-sync submodules if needed
+        git submodule update --init --recursive
+
+Notes:
+- This Docker workflow is for simulation and visualization.
+- The container uses a virtual X11 display (`DISPLAY=:1`) and serves it via noVNC on port `6080`.
+- If browser UI does not load, run `docker compose ps` and `docker compose logs --tail=200 ros2`.
+
 ### For Virtual Machine Users
 
 Download and install both **VirtualBox** and **VirtualBox Extension Pack** from [their website](https://www.virtualbox.org/wiki/Downloads). Ensure that both have the same versions. If you have a virtual machine already running, first power it off before installing the Extension Pack and proceeding.
@@ -173,7 +233,3 @@ Example implementation can be found [here](https://www.youtube.com/watch?v=h-EOH
 If any bugs or issues with this software occur, please don't hesitate to use the [Issues](https://github.com/BioMorphic-Intelligence-Lab/edubot/issues) pane within this repository. Please write a short description of the issue and some steps to reproduce it.
 
 Good Luck!
-
-
-
-
