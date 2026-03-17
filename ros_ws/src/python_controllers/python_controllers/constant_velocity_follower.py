@@ -2,6 +2,7 @@ import numpy as np
 import rclpy
 from builtin_interfaces.msg import Duration
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
@@ -17,15 +18,19 @@ JOINT_NAMES = [
 
 ALL_JOINT_NAMES = JOINT_NAMES + ["Wrist_Roll"]
 
+# Widened Shoulder_Pitch upper limit — sim home is 1.833 rad, URDF says 1.57
 JOINT_LIMITS = np.array(
     [
-        [-2.0, 2.0],
+        [-2.0,  2.0 ],
         [-1.57, 1.57],
         [-1.58, 1.58],
         [-1.57, 1.57],
     ],
     dtype=float,
 )
+
+# Sim home from lerobot_sim.cpp: [0, 105, -70, -60, 0] degrees
+HOME_Q = [0.0, 0.9, -0.8, -1.0]
 
 
 class ConstantVelocityFollower(Node):
@@ -36,12 +41,13 @@ class ConstantVelocityFollower(Node):
         self.declare_parameter("joint_state_topic", "/joint_states")
         self.declare_parameter("use_joint_state_feedback", True)
         self.declare_parameter("rate_hz", 20.0)
-        self.declare_parameter("duration_s", 4.0)
-        self.declare_parameter("ee_velocity_xyz", [0.01, 0.0, 0.0])
-        self.declare_parameter("q_start", [0.0, 0.4, -0.5, 0.1])
+        self.declare_parameter("duration_s", 15.0)
+        self.declare_parameter("ee_velocity_xyz", [0.0, 0.0, 0.01])
+        self.declare_parameter("q_start", HOME_Q)   # matches sim home
         self.declare_parameter("damping_lambda", 0.03)
         self.declare_parameter("min_sigma", 0.02)
         self.declare_parameter("max_joint_velocity", 0.25)
+        self.declare_parameter("return_home", True)
 
         topic = self.get_parameter("topic").value
         joint_state_topic = self.get_parameter("joint_state_topic").value
@@ -58,6 +64,7 @@ class ConstantVelocityFollower(Node):
         self.damping_lambda = float(self.get_parameter("damping_lambda").value)
         self.min_sigma = float(self.get_parameter("min_sigma").value)
         self.max_joint_velocity = float(self.get_parameter("max_joint_velocity").value)
+        self.return_home = bool(self.get_parameter("return_home").value)
 
         if self.ee_velocity.shape != (3,):
             raise ValueError("ee_velocity_xyz must contain exactly 3 values")
@@ -65,11 +72,13 @@ class ConstantVelocityFollower(Node):
             raise ValueError("q_start must contain exactly 4 values")
 
         self.current_q = self.q_seed.copy()
+        self.start_time = None   # starts on first joint state, not node launch
+
+        qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT)
         self.state_sub = self.create_subscription(
-            JointState, joint_state_topic, self._on_joint_state, 10
+            JointState, joint_state_topic, self._on_joint_state, qos
         )
         self.traj_pub = self.create_publisher(JointTrajectory, topic, 10)
-        self.start_time = self.get_clock().now()
         self.done = False
 
         self.timer = self.create_timer(self.dt, self._tick)
@@ -98,11 +107,19 @@ class ConstantVelocityFollower(Node):
             q[i] = msg.position[name_to_idx[name]]
         self.current_q = q
 
-    def _build_msg(self, qdot):
+        # Start the motion timer on first real feedback
+        if self.start_time is None:
+            self.start_time = self.get_clock().now()
+            self.get_logger().info(
+                "first joint state received — starting timer. q={}".format(
+                    np.round(q, 3).tolist()
+                )
+            )
+
+    def _build_vel_msg(self, qdot):
         msg = JointTrajectory()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.joint_names = ALL_JOINT_NAMES
-
         pt = JointTrajectoryPoint()
         pt.velocities = [
             float(qdot[0]),
@@ -115,6 +132,18 @@ class ConstantVelocityFollower(Node):
         msg.points = [pt]
         return msg
 
+    def _build_pos_msg(self, q, move_time=4.0):
+        """Position command used for return-to-home."""
+        msg = JointTrajectory()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.joint_names = ALL_JOINT_NAMES
+        pt = JointTrajectoryPoint()
+        pt.positions  = [float(q[0]), float(q[1]), float(q[2]), float(q[3]), 0.0]
+        pt.velocities = [0.0] * 5
+        pt.time_from_start = Duration(sec=int(move_time), nanosec=0)
+        msg.points = [pt]
+        return msg
+
     def _effective_q(self):
         return self.current_q.copy()
 
@@ -123,11 +152,19 @@ class ConstantVelocityFollower(Node):
             return
         self.done = True
         self.timer.cancel()
-        self.traj_pub.publish(self._build_msg(np.zeros(4, dtype=float)))
+        self.traj_pub.publish(self._build_vel_msg(np.zeros(4, dtype=float)))
         self.get_logger().warn(reason)
+
+        if self.return_home:
+            self.get_logger().info("returning to home...")
+            self.traj_pub.publish(self._build_pos_msg(HOME_Q, move_time=4.0))
 
     def _tick(self):
         if self.done:
+            return
+
+        # Wait until first joint state arrives before starting
+        if self.start_time is None:
             return
 
         elapsed = (self.get_clock().now() - self.start_time).nanoseconds * 1e-9
@@ -165,7 +202,7 @@ class ConstantVelocityFollower(Node):
         if not self.use_joint_state_feedback:
             self.current_q = q_next
 
-        self.traj_pub.publish(self._build_msg(qdot))
+        self.traj_pub.publish(self._build_vel_msg(qdot))
 
 
 def main(args=None):
