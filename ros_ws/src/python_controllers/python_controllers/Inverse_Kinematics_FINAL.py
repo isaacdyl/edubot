@@ -9,8 +9,6 @@ try:
 except ModuleNotFoundError:
     from Forward_Kinematics_FINAL import create_tf_matrix, forward_kinematics_full
 
-# We no longer need the URDF path or active links mask for the solver,
-# but we DO need to know we are solving for 5 joints.
 NUM_ACTIVE_JOINTS = 5
 
 JOINT_LIMITS = [
