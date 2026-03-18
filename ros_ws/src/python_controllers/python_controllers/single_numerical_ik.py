@@ -15,6 +15,7 @@ JOINT_SLICE = slice(2, 7)
 URDF_PATH = Path(__file__).resolve().parents[2] / "lerobot" / "urdf" / "lerobot.urdf"
 
 
+
 @dataclass
 class IKSolveResult:
     feasible: bool
