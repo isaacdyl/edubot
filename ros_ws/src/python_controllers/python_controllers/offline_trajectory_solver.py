@@ -30,6 +30,7 @@ class OfflineTrajectoryConfig:
     initial_joint_guess: list[float] = field(
         default_factory=lambda: [0.0, -1.2, 1.0, 0.6, 0.0]
     )
+    
     output_csv: str = "/tmp/offline_joint_trajectory.csv"
 
 

@@ -22,6 +22,8 @@ setup(
         'console_scripts': [
             'example_pos_traj = python_controllers.example_pos_traj:main',
             'example_vel_traj = python_controllers.example_vel_traj:main',
+            'DUMMY_FILE_Trajectory = python_controllers.DUMMY_FILE_Trajectory:main',
+            'Position_Trajectory_Final = python_controllers.Position_Trajectory_Final:main',
             'workspace_visualizer = python_controllers.workspace_visualizer:main',
             'joint_tester = python_controllers.Joint_tester:main',
             'shape_follower = python_controllers.shape_follower:main',

@@ -1,7 +1,13 @@
 import numpy as np
 from scipy.optimize import least_squares
 
-from Forward_Kinematics_FINAL import forward_kinematics_full, create_tf_matrix
+try:
+    from python_controllers.Forward_Kinematics_FINAL import (
+        forward_kinematics_full,
+        create_tf_matrix,
+    )
+except ImportError:
+    from Forward_Kinematics_FINAL import forward_kinematics_full, create_tf_matrix
 
 
 BOUNDS_MIN = np.array([-2.0000, -1.5700, -1.5800, -1.5700, -3.1415], dtype=float)
@@ -242,4 +248,3 @@ if __name__ == "__main__":
             )
             print(f"    Joint angles (rad): {res['q']}")
             print(f"    Iterations: {res['iters']}")
-        print()
