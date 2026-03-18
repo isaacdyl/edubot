@@ -9,12 +9,12 @@ from geometry_msgs.msg import Point
 class RectangleTraj(Node):
 
     def __init__(self):
-        super().__init__('rectangle_trajectory')
+        super().__init__('rectangle_Strajectory')
 
         # Initial safe home position for a 5-DOF arm
         self._HOME = np.array([
-            np.deg2rad(0), np.deg2rad(-105),
-            np.deg2rad(70), np.deg2rad(60),
+            np.deg2rad(0), np.deg2rad(0),
+            np.deg2rad(0), np.deg2rad(0),
             np.deg2rad(0)
         ])
         
@@ -39,31 +39,32 @@ class RectangleTraj(Node):
 
         # FIX 1 & 2: Moved into safe workspace and aligned dimensions with perimeter math
         # X delta is exactly 0.10, Y delta is exactly 0.20
-        x_min, x_max = -0.10, 0.10  
-        y_min, y_max = 0.20, 0.40 
-        z = 0.0  # Raised slightly to safely clear the table
+        l=0.20
+        x_min, x_max = -0.10, x_min + l  # 10 cm forward from the center  
+        y_min, y_max = 0.20, y_min + l  # 20 cm wide rectangle centered on the Y-axis 
+        z = 0.1  # Raised slightly to safely clear the table
         
         roll, pitch, yaw = 0.0, 0.0, 0.0  # Fixed orientation facing downwards 
 
         perimeter = 0.60
         d = fraction * perimeter  
 
-        if d < 0.10: 
+        if d < l/2: 
             # Edge 1: Bottom (Moving forward in X)
-            x = x_min + (d / 0.10) * (x_max - x_min)
+            x = x_min + (d / (l/2)) * (x_max - x_min) #divide by l/2 because this edge is travelled from half the length of the rectangle
             y = y_min
-        elif d < 0.30: 
+        elif d < l/2 + l: 
             # Edge 2: Right (Moving left in Y)
             x = x_max
-            y = y_min + ((d - 0.10) / 0.20) * (y_max - y_min)
-        elif d < 0.40: 
+            y = y_min + ((d - l/2) / l) * (y_max - y_min)
+        elif d < l/2 + l + l/2: 
             # Edge 3: Top (Moving backward in X)
-            x = x_max - ((d - 0.30) / 0.10) * (x_max - x_min)
+            x = x_max - ((d - l/2 - l) / (l/2)) * (x_max - x_min) #divide by l/2 because the other half of this edge is already drawn in the first edge
             y = y_max
         else: 
             # Edge 4: Left (Moving right in Y)
             x = x_min
-            y = y_max - ((d - 0.40) / 0.20) * (y_max - y_min)
+            y = y_max - ((d - (l/2 + l + l/2)) / l) * (y_max - y_min)
 
         return x, y, z, roll, pitch, yaw
     
