@@ -30,18 +30,19 @@ def _residual_vector(
     regularization_parameter=None,
     optimize_orientation=True,
 ):
-    q = np.clip(np.asarray(q_active, dtype=float), BOUNDS_MIN, BOUNDS_MAX)
-    fk = forward_kinematics_full(*q)
+    fk = forward_kinematics_full(q_active[0], q_active[1], q_active[2], q_active[3], q_active[4])
+
 
     pos_error = fk[:3, 3] - target_frame[:3, 3]
     residual = pos_error
-
+    
     if optimize_orientation:
         rot_error = (fk[:3, :3] - target_frame[:3, :3]).ravel()
         residual = np.concatenate([pos_error, ORIENTATION_COEFF * rot_error])
 
     if regularization_parameter is not None and q_seed is not None:
-        reg = regularization_parameter * (q - np.asarray(q_seed, dtype=float))
+        
+        reg = regularization_parameter * (q_active - np.asarray(q_seed, dtype=float))
         residual = np.concatenate([residual, reg])
 
     return residual
@@ -218,17 +219,27 @@ if __name__ == "__main__":
 
     print("Running least-squares numerical IK...\n")
     for name, pose in poses.items():
-        res_list = [ik_coordinate_descent(*pose)]
+        # Use multi-start approach with 15 random initial guesses to find multiple solutions
+        res_list = ik_coordinate_descent_multi_start(
+            *pose,
+            num_random=15,
+            seed=42,
+            unique_decimals=3
+        )
+        
+        valid_results = [res for res in res_list if res["success"]]
+        
         print(f"Pose {name}:")
+        print(f"  Found {len(valid_results)} feasible solution(s) out of {len(res_list)} candidate(s)")
+        
         for idx, res in enumerate(res_list, start=1):
-            status = "valid" if res["success"] else "approximate only"
-            print(f"  Solution {idx} ({status})")
+            status = "FEASIBLE" if res["success"] else "approximate only"
+            print(f"  Solution {idx} [{status}]")
             print(
                 f"    Pos Error: {res['pos_error']:.4f}, "
                 f"Rot Error: {res['rot_error']:.4f}, "
-                f"Total: {res['error']:.4f}"
+                f"Total Error: {res['error']:.4f}"
             )
-            print(f"    Success: {res['success']}")
+            print(f"    Joint angles (rad): {res['q']}")
             print(f"    Iterations: {res['iters']}")
-            print(f"    Angles: {res['q']}")
         print()
