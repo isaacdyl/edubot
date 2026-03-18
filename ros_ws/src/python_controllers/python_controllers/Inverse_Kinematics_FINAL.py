@@ -14,11 +14,11 @@ except ModuleNotFoundError:
 NUM_ACTIVE_JOINTS = 5
 
 JOINT_LIMITS = [
-    (-2, 2),         # Joint 1: -180 to +180 degrees
-    (-1.57, 1.57),     # Joint 2: -90 to +90 degrees
-    (-1.58, 1.58),         # Joint 3
-    (-1.57, 1.57), # Joint 4: using deg2rad for ease
-    (-np.pi, np.pi)          # Joint 5
+    (-2, 2),       # q1
+    (-1.57, 1.57), # q2
+    (-1.58, 1.58), # q3
+    (-1.57, 1.57), # q4
+    (-np.pi, np.pi)# q5
 ]
 
 @dataclass
@@ -121,4 +121,3 @@ if __name__ == "__main__":
             f"rot_error={result.rot_error_raw:.6f} total={result.error_raw:.6f}"
         )
         print(f"  q={result.q}")
-        print()
