@@ -228,7 +228,7 @@ class SilhouetteTraj(Node):
 class RectangleTraj(Node):
 
     def __init__(self):
-        super().__init__('rectangle_Strajectory')
+        super().__init__('rectangle_trajectory')
 
         # Initial safe home position for a 5-DOF arm
         self._HOME = np.array([
@@ -369,7 +369,7 @@ class RectangleTraj(Node):
             )
 
         point = JointTrajectoryPoint()
-        gripper_state = 0.0 
+        gripper_state = 0.0
         
         point.positions = [
             float(self._last_q[0]),
@@ -377,7 +377,7 @@ class RectangleTraj(Node):
             float(self._last_q[2]),
             float(self._last_q[3]),
             float(self._last_q[4]),
-            gripper_state
+            gripper_state,
         ]
         
         msg.points = [point]
@@ -392,17 +392,15 @@ class RectangleTraj(Node):
 def main(args=None):
     rclpy.init(args=args)
     rectangle_traj = RectangleTraj()
-    tu_delft_silhouette_traj = SilhouetteTraj()
 
     
     try:
         #rclpy.spin(rectangle_traj)
-        rclpy.spin(tu_delft_silhouette_traj)
+        rclpy.spin(rectangle_traj)
     except KeyboardInterrupt:
         pass
     finally:
         rectangle_traj.destroy_node()
-        tu_delft_silhouette_traj.destroy_node()
         rclpy.shutdown()
 
 
