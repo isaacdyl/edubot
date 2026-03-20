@@ -29,8 +29,8 @@ JOINT_LIMITS = np.array(
     dtype=float,
 )
 
-# Sim home from lerobot_sim.cpp: [0, 105, -70, -60, 0] degrees
-HOME_Q = [0.0, 0.9, -0.8, -1.0]
+# Sim home from lerobot_sim.cpp: []degrees
+HOME_Q = [0.0, 0.0, -0.0, -0.0] #edited 
 
 
 class ConstantVelocityFollower(Node):

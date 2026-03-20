@@ -2,8 +2,8 @@
 
 LeRobotSim::LeRobotSim(): 
     RobotSim(5, M_PI_2),
-    HOME({DEG2RAD * 0, DEG2RAD * 45, -DEG2RAD * 70,
-          -DEG2RAD * 60, DEG2RAD * 0})
+    HOME({DEG2RAD * 0, DEG2RAD * 0, -DEG2RAD * 0,
+          -DEG2RAD * 0, DEG2RAD * 0})
 {
     /* Init initial state and names */
     this->init_q();

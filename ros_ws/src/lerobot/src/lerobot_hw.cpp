@@ -7,7 +7,7 @@ LeRobotHW::LeRobotHW(std::string ser,
                      bool homing,
                      bool logging): 
     Robot(5, M_PI_2),
-    HOME({DEG2RAD * 0, -DEG2RAD * 105, DEG2RAD * 70,
+    HOME({DEG2RAD * 0, -DEG2RAD * 45, DEG2RAD * 70,
           DEG2RAD * 60, DEG2RAD * 0}),
     IDs(ids)
 {
@@ -244,3 +244,4 @@ int main(int argc, char ** argv)
   rclcpp::shutdown();
   return 0;
 }
+
