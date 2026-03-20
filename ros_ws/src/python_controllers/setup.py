@@ -32,6 +32,7 @@ setup(
             'offline_trajectory_solver = python_controllers.offline_trajectory_solver:main',
             'export_feasible_trajectories = python_controllers.export_feasible_trajectories:main',
             'joint_trajectory_replayer = python_controllers.joint_trajectory_replayer:main',
+            'pick_place_open_loop = python_controllers.pick_place_open_loop:main',
         ],
     },
 )
